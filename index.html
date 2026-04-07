@@ -128,8 +128,6 @@
     th { background-color: #2a2a2a; color: #ff9800; }
     tr:hover { background-color: #252525; }
     .profit-range { font-weight: bold; }
-    .min-profit { color: #00d2ff; }
-    .max-profit { color: #4caf50; }
   </style>
 </head>
 <body>
@@ -196,17 +194,17 @@
   </div>
 
   <div class="table-container">
-    <h3>📊 แผนจำลองการเทรด (Recovery Simulation)</h3>
+    <h3>📊 แผนจำลองการเทรด (Simulation)</h3>
     <p style="text-align: center; color: #aaa; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
-      แสดงยอดกำไรสุทธิแบบหักทุนไม้ที่แพ้แล้ว (ช่วงระหว่างชนเส้น Trail Start ไปจนถึงสุดทาง Take Profit)
+      แสดงมูลค่าการขาดทุนและกำไรของแต่ละออเดอร์ (ไม่นำมาหักลบสะสม)
     </p>
     <table>
       <thead>
         <tr>
           <th>ออเดอร์ที่</th>
           <th>ขนาด Lot</th>
-          <th>ขาดทุนไม้ก่อนหน้า</th>
-          <th>ช่วงกำไรสุทธิ (Trail Start ~ Take Profit)</th>
+          <th>ถ้าชน Stop Loss (เสีย)</th>
+          <th>ถ้าชนเป้าหมาย (Trail Start ~ Take Profit)</th>
         </tr>
       </thead>
       <tbody id="sim-table">
@@ -258,7 +256,6 @@
       if (slPoints < 300) slPoints = 300; 
       
       let tpPoints = slPoints * 2; 
-      // ปรับ Trail Start ให้เป็น 50% ของ TP
       let trailStart = Math.floor(tpPoints * 0.5); 
 
       // 8. แสดงผลบน UI
@@ -268,38 +265,26 @@
       document.getElementById('out-trail').innerText = trailStart;
       document.getElementById('out-multi').innerText = multiplier.toFixed(2);
 
-      // 9. วาดตาราง Simulation
+      // 9. วาดตาราง Simulation (แบบไม่ต้องหักยอดสะสม)
       let tbody = document.getElementById('sim-table');
       tbody.innerHTML = '';
-      let cumulativeLoss = 0;
 
       for(let i = 0; i < maxLoss; i++) {
         let lot = lotArray[i];
-        let lossAmount = lot * slPoints;
         
-        // คำนวณจำนวนเงินที่จุด Trail Start และ TP
+        // คำนวณมูลค่าของไม้นั้นๆ เพียวๆ
+        let lossAmount = lot * slPoints;
         let profitAtTrailStart = lot * trailStart;
         let profitAtTP = lot * tpPoints;
-        
-        // กำไรสุทธิ (หักทุนที่เสียมาทั้งหมด)
-        let netProfitMin = profitAtTrailStart - cumulativeLoss;
-        let netProfitMax = profitAtTP - cumulativeLoss;
-        
-        // เก็บยอดเสียสะสมไปคิดไม้หน้า
-        cumulativeLoss += lossAmount; 
-
-        // ตกแต่งตัวเลขให้ดูสวยงาม
-        let minSign = netProfitMin >= 0 ? '+' : '';
-        let minColor = netProfitMin >= 0 ? '#00d2ff' : '#ff9800'; // ถ้าเสมอตัวหรือบวกให้สีฟ้า ถ้าติดลบนิดหน่อยให้สีส้ม
 
         let row = `<tr>
           <td>ไม้ที่ ${i + 1}</td>
           <td style="color: #fff; font-weight: bold;">${lot.toFixed(2)}</td>
-          <td style="color: #f44336;">-$${(cumulativeLoss - lossAmount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td style="color: #f44336;">-$${lossAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
           <td class="profit-range">
-             <span style="color: ${minColor};">${minSign}$${netProfitMin.toLocaleString(undefined, {minimumFractionDigits: 2})}</span> 
+             <span style="color: #00d2ff;">+$${profitAtTrailStart.toLocaleString(undefined, {minimumFractionDigits: 2})}</span> 
              <span style="color: #aaa; margin: 0 5px;">~</span> 
-             <span class="max-profit">+$${netProfitMax.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+             <span style="color: #4caf50;">+$${profitAtTP.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </td>
         </tr>`;
         tbody.innerHTML += row;
