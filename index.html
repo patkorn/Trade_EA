@@ -127,6 +127,9 @@
     th, td { padding: 12px 10px; border-bottom: 1px solid #333; }
     th { background-color: #2a2a2a; color: #ff9800; }
     tr:hover { background-color: #252525; }
+    .profit-range { font-weight: bold; }
+    .min-profit { color: #00d2ff; }
+    .max-profit { color: #4caf50; }
   </style>
 </head>
 <body>
@@ -194,13 +197,16 @@
 
   <div class="table-container">
     <h3>📊 แผนจำลองการเทรด (Recovery Simulation)</h3>
+    <p style="text-align: center; color: #aaa; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">
+      แสดงยอดกำไรสุทธิแบบหักทุนไม้ที่แพ้แล้ว (ช่วงระหว่างชนเส้น Trail Start ไปจนถึงสุดทาง Take Profit)
+    </p>
     <table>
       <thead>
         <tr>
           <th>ออเดอร์ที่</th>
           <th>ขนาด Lot</th>
           <th>ขาดทุนไม้ก่อนหน้า</th>
-          <th>กำไรถ้าชน TP (หักทุนแล้ว)</th>
+          <th>ช่วงกำไรสุทธิ (Trail Start ~ Take Profit)</th>
         </tr>
       </thead>
       <tbody id="sim-table">
@@ -221,12 +227,11 @@
       let riskUsd = equity * (riskPct / 100);
       document.getElementById('out-risk').innerText = "-$" + riskUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-      // 3. กำหนดค่ามาตรฐาน (Algorithm's Constants)
+      // 3. กำหนดค่ามาตรฐาน
       let multiplier = 1.25; 
-      // ปรับแกนกลาง SL เป็น 1,200 จุด ตามที่ตั้งค่า
       let baseTargetSL = 1200; 
 
-      // 4. คำนวณหาผลรวมของอัตราส่วน Lot (Sum of Multiplier factors)
+      // 4. คำนวณหาผลรวมของอัตราส่วน Lot
       let sumFactors = 0;
       let tempLot = 1.0;
       for(let i=0; i<maxLoss; i++) {
@@ -236,9 +241,9 @@
 
       // 5. คำนวณหา Start Lot
       let rawStartLot = (riskUsd / baseTargetSL) / sumFactors;
-      let startLot = Math.max(0.01, Math.round(rawStartLot * 100) / 100); // ปัดทศนิยม 2 ตำแหน่ง ขั้นต่ำ 0.01
+      let startLot = Math.max(0.01, Math.round(rawStartLot * 100) / 100); 
 
-      // 6. คำนวณ Lot จริงตามระบบ MT4/MT5 เพื่อหา SL ที่เป๊ะที่สุด
+      // 6. คำนวณ Lot จริงตามระบบ
       let totalActualLots = 0;
       let currentLot = startLot;
       let lotArray = [];
@@ -252,8 +257,9 @@
       let slPoints = Math.floor(riskUsd / totalActualLots);
       if (slPoints < 300) slPoints = 300; 
       
-      let tpPoints = slPoints * 2; // อัตราส่วน RR 1:2
-      let trailStart = Math.floor(slPoints * 0.4); // ห่าง 40% ของระยะ SL
+      let tpPoints = slPoints * 2; 
+      // ปรับ Trail Start ให้เป็น 50% ของ TP
+      let trailStart = Math.floor(tpPoints * 0.5); 
 
       // 8. แสดงผลบน UI
       document.getElementById('out-lot').innerText = startLot.toFixed(2);
@@ -270,22 +276,37 @@
       for(let i = 0; i < maxLoss; i++) {
         let lot = lotArray[i];
         let lossAmount = lot * slPoints;
-        let profitAmount = lot * tpPoints;
         
-        let netProfit = profitAmount - cumulativeLoss;
+        // คำนวณจำนวนเงินที่จุด Trail Start และ TP
+        let profitAtTrailStart = lot * trailStart;
+        let profitAtTP = lot * tpPoints;
+        
+        // กำไรสุทธิ (หักทุนที่เสียมาทั้งหมด)
+        let netProfitMin = profitAtTrailStart - cumulativeLoss;
+        let netProfitMax = profitAtTP - cumulativeLoss;
+        
+        // เก็บยอดเสียสะสมไปคิดไม้หน้า
         cumulativeLoss += lossAmount; 
+
+        // ตกแต่งตัวเลขให้ดูสวยงาม
+        let minSign = netProfitMin >= 0 ? '+' : '';
+        let minColor = netProfitMin >= 0 ? '#00d2ff' : '#ff9800'; // ถ้าเสมอตัวหรือบวกให้สีฟ้า ถ้าติดลบนิดหน่อยให้สีส้ม
 
         let row = `<tr>
           <td>ไม้ที่ ${i + 1}</td>
-          <td style="color: #00d2ff; font-weight: bold;">${lot.toFixed(2)}</td>
+          <td style="color: #fff; font-weight: bold;">${lot.toFixed(2)}</td>
           <td style="color: #f44336;">-$${(cumulativeLoss - lossAmount).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-          <td style="color: #4caf50; font-weight: bold;">+$${netProfit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+          <td class="profit-range">
+             <span style="color: ${minColor};">${minSign}$${netProfitMin.toLocaleString(undefined, {minimumFractionDigits: 2})}</span> 
+             <span style="color: #aaa; margin: 0 5px;">~</span> 
+             <span class="max-profit">+$${netProfitMax.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+          </td>
         </tr>`;
         tbody.innerHTML += row;
       }
     }
 
-    // สั่งให้รันคำนวณอัตโนมัติ 1 ครั้งตอนเปิดเว็บ
+    // สั่งให้รันคำนวณอัตโนมัติ
     window.onload = generateWprSettings;
   </script>
 
