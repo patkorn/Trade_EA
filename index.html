@@ -135,7 +135,7 @@
   <div class="header">
     <img src="https://cdn.jsdelivr.net/gh/patkorn/piclogo/PK_EA.png" alt="PK | EA System Logo" class="brand-logo" onerror="this.style.display='none'">
     <h1>WPR EA : Smart Auto-Settings</h1>
-    <p>คำนวณค่า Parameter แบบ One-Click ตามความเสี่ยง</p>
+    <p>คำนวณค่า Parameter แบบ One-Click ตามความเสี่ยงเป๊ะ 100%</p>
   </div>
 
   <div class="container">
@@ -149,7 +149,7 @@
       
       <div class="input-group">
         <label>2. ยอมรับความเสี่ยงได้กี่เปอร์เซ็นต์ (%)</label>
-        <input type="number" id="risk-pct" value="5" step="0.5">
+        <input type="number" id="risk-pct" value="10" step="0.5">
       </div>
       
       <div class="input-group">
@@ -208,7 +208,7 @@
         </tr>
       </thead>
       <tbody id="sim-table">
-        </tbody>
+      </tbody>
     </table>
   </div>
 
@@ -239,7 +239,10 @@
 
       // 5. คำนวณหา Start Lot
       let rawStartLot = (riskUsd / baseTargetSL) / sumFactors;
-      let startLot = Math.max(0.01, Math.round(rawStartLot * 100) / 100); 
+      
+      // --- [แก้ไขลอจิกตรงนี้] ---
+      // ใช้ Math.ceil (ปัดเศษขึ้น) เพื่อให้ความสำคัญกับการ "เพิ่ม Lot" ทันทีที่รับความเสี่ยงสูงขึ้น
+      let startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
 
       // 6. คำนวณ Lot จริงตามระบบ
       let totalActualLots = 0;
@@ -251,9 +254,9 @@
           currentLot = parseFloat((currentLot * multiplier).toFixed(2));
       }
 
-      // 7. คำนวณ SL, TP, Trail (จุด)
+      // 7. คำนวณ SL, TP, Trail (จุด) ใหม่ เพื่อให้แมตช์กับ Lot ที่ใหญ่ขึ้น
       let slPoints = Math.floor(riskUsd / totalActualLots);
-      if (slPoints < 300) slPoints = 300; 
+      if (slPoints < 200) slPoints = 200; // ล็อคขั้นต่ำสุดๆ ไว้ที่ 200 จุดกันโบรกเกอร์ไม่ให้เปิดออเดอร์
       
       let tpPoints = slPoints * 2; 
       let trailStart = Math.floor(tpPoints * 0.5); 
@@ -265,14 +268,13 @@
       document.getElementById('out-trail').innerText = trailStart;
       document.getElementById('out-multi').innerText = multiplier.toFixed(2);
 
-      // 9. วาดตาราง Simulation (แบบไม่ต้องหักยอดสะสม)
+      // 9. วาดตาราง Simulation
       let tbody = document.getElementById('sim-table');
       tbody.innerHTML = '';
 
       for(let i = 0; i < maxLoss; i++) {
         let lot = lotArray[i];
         
-        // คำนวณมูลค่าของไม้นั้นๆ เพียวๆ
         let lossAmount = lot * slPoints;
         let profitAtTrailStart = lot * trailStart;
         let profitAtTP = lot * tpPoints;
