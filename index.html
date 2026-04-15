@@ -110,6 +110,7 @@
     .val-tp { color: #4caf50 !important; }
     .val-sl { color: #f44336 !important; }
     .val-loss { color: #f44336 !important; font-size: 28px !important;}
+    .target-risk { font-size: 12px; color: #888; margin-top: 5px; }
 
     /* ตาราง */
     .table-container {
@@ -174,8 +175,9 @@
       <h3>นำค่าเหล่านี้ไปกรอกใน EA ได้เลย</h3>
       
       <div class="setting-box full">
-        <h4>ยอมขาดทุนสูงสุด (Risk Amount)</h4>
+        <h4>ยอดขาดทุนจริง (ACTUAL RISK AMOUNT)</h4>
         <div class="val val-loss" id="out-risk">$0.00</div>
+        <div class="target-risk">เป้าหมายที่ตั้งไว้: <span id="target-risk">$0.00</span></div>
       </div>
 
       <div class="setting-grid">
@@ -226,18 +228,16 @@
 
   <script>
     function generateWprSettings() {
-      // 1. ดึงค่า Input
       let equity = parseFloat(document.getElementById('equity').value);
       let riskPct = parseFloat(document.getElementById('risk-pct').value);
       let maxLoss = parseInt(document.getElementById('max-loss').value);
 
       if(isNaN(equity) || equity <= 0) return alert("กรุณาระบุเงินทุนให้ถูกต้องครับ");
 
-      // 2. คำนวณเงิน Risk (USD)
-      let riskUsd = equity * (riskPct / 100);
-      document.getElementById('out-risk').innerText = "-$" + riskUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      // 2. คำนวณเงิน Risk เป้าหมาย (USD)
+      let targetRiskUsd = equity * (riskPct / 100);
 
-      // 3. กำหนดค่ามาตรฐานใหม่ (Multiplier เป็น 1.30)
+      // 3. กำหนดค่ามาตรฐาน
       let multiplier = 1.30; 
       let baseTargetSL = 1200; 
 
@@ -250,7 +250,7 @@
       }
 
       // 5. คำนวณหา Start Lot
-      let rawStartLot = (riskUsd / baseTargetSL) / sumFactors;
+      let rawStartLot = (targetRiskUsd / baseTargetSL) / sumFactors;
       let startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
 
       // 6. คำนวณ Lot จริงตามระบบ
@@ -263,22 +263,15 @@
           currentLot = parseFloat((currentLot * multiplier).toFixed(2));
       }
 
-      // 7. คำนวณ SL, TP, Trail (จุด) - ปรับปรุงให้ปัดขึ้นเป็นหลักร้อย
-      let rawSlPoints = riskUsd / totalActualLots;
-      let slPoints = Math.ceil(rawSlPoints / 100) * 100; // ปัดขึ้นทีละ 100 จุด
+      // 7. คำนวณ SL, TP, Trail (จุด) ปัดขึ้นเป็นหลักร้อย
+      let rawSlPoints = targetRiskUsd / totalActualLots;
+      let slPoints = Math.ceil(rawSlPoints / 100) * 100;
       if (slPoints < 200) slPoints = 200; 
       
       let tpPoints = slPoints * 2; 
-      let trailStart = Math.ceil((tpPoints * 0.5) / 100) * 100; // ปัดขึ้นเป็นหลักร้อยเผื่อไว้
+      let trailStart = Math.ceil((tpPoints * 0.5) / 100) * 100; 
 
-      // 8. แสดงผลบน UI
-      document.getElementById('out-lot').innerText = startLot.toFixed(2);
-      document.getElementById('out-sl').innerText = slPoints;
-      document.getElementById('out-tp').innerText = tpPoints;
-      document.getElementById('out-trail').innerText = trailStart;
-      document.getElementById('out-multi').innerText = multiplier.toFixed(2);
-
-      // 9. วาดตาราง Simulation
+      // 9. วาดตาราง Simulation และคำนวณผลรวมใหม่
       let tbody = document.getElementById('sim-table');
       let tfoot = document.getElementById('sim-table-foot');
       tbody.innerHTML = '';
@@ -322,6 +315,16 @@
         </td>
       </tr>`;
       tfoot.innerHTML = footRow;
+
+      // 8. แสดงผลบน UI (ใช้ totalLoss ที่คำนวณจากตารางมาแสดงด้านบน)
+      document.getElementById('out-risk').innerText = "-$" + totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      document.getElementById('target-risk').innerText = "-$" + targetRiskUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      
+      document.getElementById('out-lot').innerText = startLot.toFixed(2);
+      document.getElementById('out-sl').innerText = slPoints;
+      document.getElementById('out-tp').innerText = tpPoints;
+      document.getElementById('out-trail').innerText = trailStart;
+      document.getElementById('out-multi').innerText = multiplier.toFixed(2);
     }
 
     // สั่งให้รันคำนวณอัตโนมัติ
