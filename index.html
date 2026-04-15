@@ -151,7 +151,7 @@
   <div class="header">
     <img src="https://cdn.jsdelivr.net/gh/patkorn/piclogo/PK_EA.png" alt="PK | EA System Logo" class="brand-logo" onerror="this.style.display='none'">
     <h1>WPR EA : Smart Auto-Settings</h1>
-    <p>คำนวณค่า Parameter แบบ One-Click ตามความเสี่ยง</p>
+    <p>คำนวณค่า Parameter แบบ One-Click (Auto Smart Multiplier)</p>
   </div>
 
   <div class="container">
@@ -175,7 +175,7 @@
 
       <div class="input-group">
         <label style="color: #ff9800;">4. ล็อก Lot ครั้งแรก (ไม่บังคับ)</label>
-        <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบคำนวณ Lot ออโต้ที่เหมาะสมที่สุดให้</span>
+        <span class="label-desc" style="color: #cc7a00;">ระบบจะคำนวณหา Multiplier ที่เหมาะสมที่สุดให้เสมอ</span>
         <input type="number" id="custom-lot" placeholder="ตัวอย่าง: 0.05" step="0.01">
       </div>
       
@@ -193,7 +193,7 @@
 
       <div class="setting-grid">
         <div class="setting-box">
-          <h4 id="lot-label-title">LOTS (คำนวณออโต้)</h4>
+          <h4 id="lot-label-title">LOTS</h4>
           <div class="val val-lot" id="out-lot">0.00</div>
         </div>
         <div class="setting-box" style="border-left: 4px solid #00d2ff;">
@@ -208,9 +208,9 @@
           <h4>TAKE PROFIT</h4>
           <div class="val val-tp" id="out-tp">0</div>
         </div>
-        <div class="setting-box">
-          <h4>MULTIPLY</h4>
-          <div class="val" id="out-multi">1.30</div>
+        <div class="setting-box" style="border-left: 4px solid #ffeb3b;">
+          <h4 style="color: #ffeb3b;">MULTIPLY (ดีที่สุด)</h4>
+          <div class="val" id="out-multi">1.20</div>
         </div>
         <div class="setting-box">
           <h4>TRAIL START</h4>
@@ -245,85 +245,105 @@
     function generateWprSettings() {
       let equity = parseFloat(document.getElementById('equity').value);
       let riskPct = parseFloat(document.getElementById('risk-pct').value);
-      let inputSl = parseInt(document.getElementById('input-sl').value);
+      let slPoints = parseInt(document.getElementById('input-sl').value);
       let customLotInput = document.getElementById('custom-lot').value;
       let customLot = parseFloat(customLotInput);
 
       if(isNaN(equity) || equity <= 0) return alert("กรุณาระบุเงินทุนให้ถูกต้องครับ");
-      if(isNaN(inputSl) || inputSl < 100) return alert("กรุณาระบุระยะ Stop Loss ขั้นต่ำ 100 จุดครับ");
+      if(isNaN(slPoints) || slPoints < 100) return alert("กรุณาระบุระยะ Stop Loss ขั้นต่ำ 100 จุดครับ");
 
       let targetRiskUsd = equity * (riskPct / 100);
-      let multiplier = 1.30; 
-      let slPoints = inputSl; 
       let tpPoints = slPoints * 2; 
       let trailStart = slPoints; 
 
-      let startLot;
       let isManualLot = !isNaN(customLot) && customLot > 0;
 
-      if (isManualLot) {
-          startLot = customLot;
+      // ระบบ Smart Multiplier (แสกนหาค่า 1.20 ถึง 1.50)
+      let testMultipliers = [1.20, 1.25, 1.30, 1.35, 1.40, 1.45, 1.50];
+      let bestConfig = null;
+      let minDifference = Infinity;
+
+      testMultipliers.forEach(m => {
+          let startLot;
+          if (isManualLot) {
+              startLot = customLot;
+          } else {
+              // คำนวณ Lot ออโต้ โดยอ้างอิงฐาน 4 ไม้เพื่อความยืดหยุ่น
+              let sumFactors = 0;
+              let tempLotFactor = 1.0;
+              for(let i=0; i<4; i++) {
+                  sumFactors += tempLotFactor;
+                  tempLotFactor = parseFloat((tempLotFactor * m).toFixed(2));
+              }
+              let rawStartLot = (targetRiskUsd / slPoints) / sumFactors;
+              startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
+          }
+
+          let loss = 0;
+          let step = 0;
+          let currentLot = startLot;
+          let arr = [];
+
+          // ลูปจำลองหาความลึก (Max Steps)
+          while (loss < targetRiskUsd || step === 0) {
+              let lossThisStep = currentLot * slPoints;
+              arr.push(currentLot);
+              loss += lossThisStep;
+              
+              currentLot = parseFloat((currentLot * m).toFixed(2));
+              step++;
+              
+              if(step >= 50) break; 
+          }
+
+          // หาว่า Multiplier ไหนทำให้ยอดขาดทุนใกล้เป้าหมายที่สุด
+          let diff = Math.abs(loss - targetRiskUsd);
+          
+          if (diff < minDifference) {
+              minDifference = diff;
+              bestConfig = {
+                  multiplier: m,
+                  lot: startLot,
+                  steps: step,
+                  totalLoss: loss,
+                  lotArray: arr
+              };
+          }
+      });
+
+      // ดึงค่าที่ดีที่สุดมาใช้งาน
+      if(isManualLot) {
           document.getElementById('lot-label-title').innerText = "⭐ LOTS (ฟิกซ์เอง)";
       } else {
-          // คำนวณ Factor อ้างอิงจากระยะ 4 ไม้ (Sweet Spot กลางๆ ที่เหมาะสมและปลอดภัย)
-          let sumFactors = 0;
-          let tempLotFactor = 1.0;
-          for(let i=0; i<4; i++) {
-              sumFactors += tempLotFactor;
-              tempLotFactor = parseFloat((tempLotFactor * multiplier).toFixed(2));
-          }
-          
-          let rawStartLot = (targetRiskUsd / slPoints) / sumFactors;
-          startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
           document.getElementById('lot-label-title').innerText = "LOTS (คำนวณออโต้)";
       }
 
-      let totalLoss = 0;
-      let totalProfitTrail = 0;
-      let totalProfitTP = 0;
-      let step = 0;
-      let currentLot = startLot;
-      let lotArray = [];
-
-      // คำนวณหักลบทีละไม้จนกว่าจะชนโควต้าเป้าหมายความเสี่ยง
-      while (totalLoss < targetRiskUsd || step === 0) {
-          let lossThisStep = currentLot * slPoints;
-          lotArray.push(currentLot);
-          totalLoss += lossThisStep;
-          
-          let profitAtTrailStart = currentLot * trailStart;
-          let profitAtTP = currentLot * tpPoints;
-          totalProfitTrail += profitAtTrailStart;
-          totalProfitTP += profitAtTP;
-
-          currentLot = parseFloat((currentLot * multiplier).toFixed(2));
-          step++;
-          
-          // ลิมิตป้องกันการ Error (เผื่อผู้ใช้ใส่ค่าแปลกๆ)
-          if(step >= 50) break; 
-      }
-
-      let maxSteps = step;
-
-      document.getElementById('out-risk').innerText = "-$" + totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      document.getElementById('out-risk').innerText = "-$" + bestConfig.totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById('target-risk').innerText = "-$" + targetRiskUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
-      document.getElementById('out-lot').innerText = startLot.toFixed(2);
-      document.getElementById('out-steps').innerText = maxSteps + " ครั้ง";
-      document.getElementById('out-multi').innerText = multiplier.toFixed(2);
+      document.getElementById('out-lot').innerText = bestConfig.lot.toFixed(2);
+      document.getElementById('out-steps').innerText = bestConfig.steps + " ครั้ง";
+      document.getElementById('out-multi').innerText = bestConfig.multiplier.toFixed(2);
       document.getElementById('out-sl').innerText = slPoints;
       document.getElementById('out-tp').innerText = tpPoints;
       document.getElementById('out-trail').innerText = trailStart;
 
+      // วาดตาราง
       let tbody = document.getElementById('sim-table');
       let tfoot = document.getElementById('sim-table-foot');
       tbody.innerHTML = '';
       
-      for(let i = 0; i < maxSteps; i++) {
-        let lot = lotArray[i];
+      let totalProfitTrail = 0;
+      let totalProfitTP = 0;
+
+      for(let i = 0; i < bestConfig.steps; i++) {
+        let lot = bestConfig.lotArray[i];
         let lossAmount = lot * slPoints;
         let profitAtTrailStart = lot * trailStart;
         let profitAtTP = lot * tpPoints;
+
+        totalProfitTrail += profitAtTrailStart;
+        totalProfitTP += profitAtTP;
 
         let row = `<tr>
           <td>ครั้งที่ ${i + 1}</td>
@@ -340,7 +360,7 @@
 
       let footRow = `<tr>
         <td colspan="2" style="text-align: right; color: #ff9800; padding-right: 20px;">ผลรวมทั้งหมด:</td>
-        <td style="color: #f44336;">-$${totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+        <td style="color: #f44336;">-$${bestConfig.totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
         <td class="profit-range">
            <span style="color: #00d2ff;">+$${totalProfitTrail.toLocaleString(undefined, {minimumFractionDigits: 2})}</span> 
            <span style="color: #aaa; margin: 0 5px;">~</span> 
