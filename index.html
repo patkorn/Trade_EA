@@ -61,8 +61,8 @@
     }
     input[type="number"]:focus { outline: none; border-color: #ff9800; }
     
-    #custom-lot { border-color: #ff9800; background-color: #2a2015; }
-    #custom-lot:focus { border-color: #ffb74d; }
+    .input-optional { border-color: #ff9800 !important; background-color: #2a2015 !important; }
+    .input-optional:focus { border-color: #ffb74d !important; }
 
     .btn-calc {
       width: 100%;
@@ -135,15 +135,12 @@
     tr:hover { background-color: #252525; }
     .profit-range { font-weight: bold; }
     
-    /* สไตล์สำหรับแถบผลรวม */
     tfoot tr {
       background-color: #2a2a2a;
       border-top: 2px solid #ff9800;
       font-weight: bold;
     }
-    tfoot td {
-      font-size: 16px;
-    }
+    tfoot td { font-size: 16px; }
   </style>
 </head>
 <body>
@@ -151,7 +148,7 @@
   <div class="header">
     <img src="https://cdn.jsdelivr.net/gh/patkorn/piclogo/PK_EA.png" alt="PK | EA System Logo" class="brand-logo" onerror="this.style.display='none'">
     <h1>WPR EA : Smart Auto-Settings</h1>
-    <p>คำนวณค่า Parameter แบบ One-Click (Auto Smart Multiplier)</p>
+    <p>คำนวณค่า Parameter อัจฉริยะ (Full Auto Mode)</p>
   </div>
 
   <div class="container">
@@ -169,14 +166,15 @@
       </div>
       
       <div class="input-group">
-        <label>3. ตั้งค่าระยะ Stop Loss (Points)</label>
-        <input type="number" id="input-sl" value="600" step="100">
+        <label style="color: #ff9800;">3. ตั้งค่าระยะ Stop Loss (ไม่บังคับ)</label>
+        <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบหาระยะที่เหมาะสมที่สุดให้</span>
+        <input type="number" id="custom-sl" class="input-optional" placeholder="ตัวอย่าง: 600" step="100">
       </div>
 
       <div class="input-group">
         <label style="color: #ff9800;">4. ล็อก Lot ครั้งแรก (ไม่บังคับ)</label>
-        <span class="label-desc" style="color: #cc7a00;">ระบบจะคำนวณหา Multiplier ที่เหมาะสมที่สุดให้เสมอ</span>
-        <input type="number" id="custom-lot" placeholder="ตัวอย่าง: 0.05" step="0.01">
+        <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบคำนวณ Lot ออโต้ที่ปลอดภัยที่สุดให้</span>
+        <input type="number" id="custom-lot" class="input-optional" placeholder="ตัวอย่าง: 0.05" step="0.01">
       </div>
       
       <button class="btn-calc" onclick="generateWprSettings()">Generate Settings 🚀</button>
@@ -201,7 +199,7 @@
           <div class="val val-steps" id="out-steps">0 ครั้ง</div>
         </div>
         <div class="setting-box">
-          <h4>STOP LOSS</h4>
+          <h4 id="sl-label-title">STOP LOSS</h4>
           <div class="val val-sl" id="out-sl">0</div>
         </div>
         <div class="setting-box">
@@ -210,7 +208,7 @@
         </div>
         <div class="setting-box" style="border-left: 4px solid #ffeb3b;">
           <h4 style="color: #ffeb3b;">MULTIPLY (ดีที่สุด)</h4>
-          <div class="val" id="out-multi">1.20</div>
+          <div class="val" id="out-multi">1.2</div>
         </div>
         <div class="setting-box">
           <h4>TRAIL START</h4>
@@ -245,70 +243,82 @@
     function generateWprSettings() {
       let equity = parseFloat(document.getElementById('equity').value);
       let riskPct = parseFloat(document.getElementById('risk-pct').value);
-      let slPoints = parseInt(document.getElementById('input-sl').value);
+      let customSlInput = document.getElementById('custom-sl').value;
       let customLotInput = document.getElementById('custom-lot').value;
+      
+      let customSl = parseInt(customSlInput);
       let customLot = parseFloat(customLotInput);
 
       if(isNaN(equity) || equity <= 0) return alert("กรุณาระบุเงินทุนให้ถูกต้องครับ");
-      if(isNaN(slPoints) || slPoints < 100) return alert("กรุณาระบุระยะ Stop Loss ขั้นต่ำ 100 จุดครับ");
 
       let targetRiskUsd = equity * (riskPct / 100);
-      let tpPoints = slPoints * 2; 
-      let trailStart = slPoints; 
 
       let isManualLot = !isNaN(customLot) && customLot > 0;
+      let isManualSl = !isNaN(customSl) && customSl >= 100;
 
-      // ระบบ Smart Multiplier (แสกนหาค่า 1.20 ถึง 1.50)
-      let testMultipliers = [1.20, 1.25, 1.30, 1.35, 1.40, 1.45, 1.50];
+      // ตัวคูณทศนิยม 1 ตำแหน่ง (ปัดเศษลงเพื่อความปลอดภัยตามที่แจ้งมา)
+      let testMultipliers = [1.2, 1.3, 1.4, 1.5];
+      // ช่วง Stop Loss ออโต้ที่เป็นไปได้
+      let testSLs = isManualSl ? [customSl] : [500, 600, 700, 800, 1000, 1200, 1500, 2000];
+
       let bestConfig = null;
-      let minDifference = Infinity;
+      let minScore = Infinity; // ใช้คะแนนประเมินหาค่าที่เหมาะสมที่สุด
 
-      testMultipliers.forEach(m => {
-          let startLot;
-          if (isManualLot) {
-              startLot = customLot;
-          } else {
-              // คำนวณ Lot ออโต้ โดยอ้างอิงฐาน 4 ไม้เพื่อความยืดหยุ่น
-              let sumFactors = 0;
-              let tempLotFactor = 1.0;
-              for(let i=0; i<4; i++) {
-                  sumFactors += tempLotFactor;
-                  tempLotFactor = parseFloat((tempLotFactor * m).toFixed(2));
+      // แสกนหาความสัมพันธ์ของ SL, Multiplier และ Lot
+      testSLs.forEach(sl => {
+          testMultipliers.forEach(m => {
+              let startLot;
+              if (isManualLot) {
+                  startLot = customLot;
+              } else {
+                  // สมมติฐานให้ทนได้ 4 ไม้เพื่อคำนวณฐาน Lot เริ่มต้น
+                  let sumFactors = 0;
+                  let tempLotFactor = 1.0;
+                  for(let i=0; i<4; i++) {
+                      sumFactors += tempLotFactor;
+                      tempLotFactor = parseFloat((tempLotFactor * m).toFixed(2));
+                  }
+                  let rawStartLot = (targetRiskUsd / sl) / sumFactors;
+                  startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
               }
-              let rawStartLot = (targetRiskUsd / slPoints) / sumFactors;
-              startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
-          }
 
-          let loss = 0;
-          let step = 0;
-          let currentLot = startLot;
-          let arr = [];
+              let loss = 0;
+              let step = 0;
+              let currentLot = startLot;
+              let arr = [];
 
-          // ลูปจำลองหาความลึก (Max Steps)
-          while (loss < targetRiskUsd || step === 0) {
-              let lossThisStep = currentLot * slPoints;
-              arr.push(currentLot);
-              loss += lossThisStep;
+              // ลูปจำลองหาความลึก (Max Steps)
+              while (loss < targetRiskUsd || step === 0) {
+                  let lossThisStep = currentLot * sl;
+                  arr.push(currentLot);
+                  loss += lossThisStep;
+                  
+                  currentLot = parseFloat((currentLot * m).toFixed(2));
+                  step++;
+                  if(step >= 50) break; 
+              }
+
+              let diff = Math.abs(loss - targetRiskUsd);
               
-              currentLot = parseFloat((currentLot * m).toFixed(2));
-              step++;
+              // ลงโทษ (Penalty) หากจำนวนสเต็ปที่สู้ได้น้อยไปหรือมากไป (อยากให้อยู่ราว 3-6 ไม้)
+              let stepPenalty = 0;
+              if(step < 3) stepPenalty = (3 - step) * 20; 
+              if(step > 6) stepPenalty = (step - 6) * 10; 
               
-              if(step >= 50) break; 
-          }
-
-          // หาว่า Multiplier ไหนทำให้ยอดขาดทุนใกล้เป้าหมายที่สุด
-          let diff = Math.abs(loss - targetRiskUsd);
-          
-          if (diff < minDifference) {
-              minDifference = diff;
-              bestConfig = {
-                  multiplier: m,
-                  lot: startLot,
-                  steps: step,
-                  totalLoss: loss,
-                  lotArray: arr
-              };
-          }
+              let score = diff + stepPenalty;
+              
+              if (score < minScore) {
+                  minScore = score;
+                  bestConfig = {
+                      multiplier: m,
+                      sl: sl,
+                      lot: startLot,
+                      steps: step,
+                      totalLoss: loss,
+                      lotArray: arr
+                  };
+              }
+          });
       });
 
       // ดึงค่าที่ดีที่สุดมาใช้งาน
@@ -318,13 +328,25 @@
           document.getElementById('lot-label-title').innerText = "LOTS (คำนวณออโต้)";
       }
 
+      if(isManualSl) {
+          document.getElementById('sl-label-title').innerText = "⭐ STOP LOSS (ฟิกซ์เอง)";
+      } else {
+          document.getElementById('sl-label-title').innerText = "STOP LOSS (คำนวณออโต้)";
+      }
+
+      let tpPoints = bestConfig.sl * 2; 
+      let trailStart = bestConfig.sl;
+
       document.getElementById('out-risk').innerText = "-$" + bestConfig.totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById('target-risk').innerText = "-$" + targetRiskUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
       document.getElementById('out-lot').innerText = bestConfig.lot.toFixed(2);
       document.getElementById('out-steps').innerText = bestConfig.steps + " ครั้ง";
-      document.getElementById('out-multi').innerText = bestConfig.multiplier.toFixed(2);
-      document.getElementById('out-sl').innerText = slPoints;
+      
+      // แสดง Multiplier เป็นทศนิยม 1 ตำแหน่งตามเงื่อนไขเป๊ะๆ
+      document.getElementById('out-multi').innerText = bestConfig.multiplier.toFixed(1);
+      
+      document.getElementById('out-sl').innerText = bestConfig.sl;
       document.getElementById('out-tp').innerText = tpPoints;
       document.getElementById('out-trail').innerText = trailStart;
 
@@ -338,7 +360,7 @@
 
       for(let i = 0; i < bestConfig.steps; i++) {
         let lot = bestConfig.lotArray[i];
-        let lossAmount = lot * slPoints;
+        let lossAmount = lot * bestConfig.sl;
         let profitAtTrailStart = lot * trailStart;
         let profitAtTP = lot * tpPoints;
 
