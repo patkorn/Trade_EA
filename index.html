@@ -61,7 +61,6 @@
     }
     input[type="number"]:focus { outline: none; border-color: #ff9800; }
     
-    /* เน้นช่อง Custom Lot ให้ต่างจากช่องอื่น */
     #custom-lot { border-color: #ff9800; background-color: #2a2015; }
     #custom-lot:focus { border-color: #ffb74d; }
 
@@ -175,8 +174,8 @@
       </div>
 
       <div class="input-group">
-        <label style="color: #ff9800;">4. ล็อก Lot ไม้แรก (ไม่บังคับ)</label>
-        <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบคำนวณออโต้สำหรับ 3 ไม้</span>
+        <label style="color: #ff9800;">4. ล็อก Lot ครั้งแรก (ไม่บังคับ)</label>
+        <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบคำนวณ Lot ออโต้ที่เหมาะสมที่สุดให้</span>
         <input type="number" id="custom-lot" placeholder="ตัวอย่าง: 0.05" step="0.01">
       </div>
       
@@ -194,12 +193,12 @@
 
       <div class="setting-grid">
         <div class="setting-box">
-          <h4 id="lot-label-title">LOTS (ไม้แรกออโต้)</h4>
+          <h4 id="lot-label-title">LOTS (คำนวณออโต้)</h4>
           <div class="val val-lot" id="out-lot">0.00</div>
         </div>
         <div class="setting-box" style="border-left: 4px solid #00d2ff;">
           <h4 style="color: #00d2ff;">MAX STEPS (สู้ได้สูงสุด)</h4>
-          <div class="val val-steps" id="out-steps">0 ไม้</div>
+          <div class="val val-steps" id="out-steps">0 ครั้ง</div>
         </div>
         <div class="setting-box">
           <h4>STOP LOSS</h4>
@@ -244,7 +243,6 @@
 
   <script>
     function generateWprSettings() {
-      // 1. ดึงค่า Input ทั้งหมด
       let equity = parseFloat(document.getElementById('equity').value);
       let riskPct = parseFloat(document.getElementById('risk-pct').value);
       let inputSl = parseInt(document.getElementById('input-sl').value);
@@ -254,16 +252,12 @@
       if(isNaN(equity) || equity <= 0) return alert("กรุณาระบุเงินทุนให้ถูกต้องครับ");
       if(isNaN(inputSl) || inputSl < 100) return alert("กรุณาระบุระยะ Stop Loss ขั้นต่ำ 100 จุดครับ");
 
-      // 2. คำนวณเงิน Risk เป้าหมาย (USD)
       let targetRiskUsd = equity * (riskPct / 100);
-
-      // 3. กำหนดค่ามาตรฐานของระบบ
       let multiplier = 1.30; 
       let slPoints = inputSl; 
       let tpPoints = slPoints * 2; 
-      let trailStart = slPoints; // อ้างอิงจาก TP * 0.5 ก็คือเท่ากับระยะ SL
+      let trailStart = slPoints; 
 
-      // 4. ระบบ Hybrid ตรวจสอบว่าจะใช้ออโต้หรือฟิกซ์ Lot
       let startLot;
       let isManualLot = !isNaN(customLot) && customLot > 0;
 
@@ -271,14 +265,19 @@
           startLot = customLot;
           document.getElementById('lot-label-title').innerText = "⭐ LOTS (ฟิกซ์เอง)";
       } else {
-          // หากไม่ใส่ Lot ให้คำนวณออโต้สำหรับ 3 ไม้ (1 + 1.30 + 1.69 = 3.99)
-          let sumFactors = 3.99; 
+          // คำนวณ Factor อ้างอิงจากระยะ 4 ไม้ (Sweet Spot กลางๆ ที่เหมาะสมและปลอดภัย)
+          let sumFactors = 0;
+          let tempLotFactor = 1.0;
+          for(let i=0; i<4; i++) {
+              sumFactors += tempLotFactor;
+              tempLotFactor = parseFloat((tempLotFactor * multiplier).toFixed(2));
+          }
+          
           let rawStartLot = (targetRiskUsd / slPoints) / sumFactors;
           startLot = Math.max(0.01, Math.ceil(rawStartLot * 100) / 100); 
-          document.getElementById('lot-label-title').innerText = "LOTS (ออโต้ 3 ไม้)";
+          document.getElementById('lot-label-title').innerText = "LOTS (คำนวณออโต้)";
       }
 
-      // 5. คำนวณจำนวนไม้สูงสุดที่สู้ได้ (Max Steps)
       let totalLoss = 0;
       let totalProfitTrail = 0;
       let totalProfitTP = 0;
@@ -286,7 +285,7 @@
       let currentLot = startLot;
       let lotArray = [];
 
-      // ลูปบวกสะสมจนกว่ายอดขาดทุนรวมจะเกินงบความเสี่ยงเป้าหมาย
+      // คำนวณหักลบทีละไม้จนกว่าจะชนโควต้าเป้าหมายความเสี่ยง
       while (totalLoss < targetRiskUsd || step === 0) {
           let lossThisStep = currentLot * slPoints;
           lotArray.push(currentLot);
@@ -297,27 +296,25 @@
           totalProfitTrail += profitAtTrailStart;
           totalProfitTP += profitAtTP;
 
-          // คูณไม้ต่อไป
           currentLot = parseFloat((currentLot * multiplier).toFixed(2));
           step++;
           
-          if(step >= 50) break; // ป้องกันการลูปไม่รู้จบหากใส่ค่าผิดปกติ
+          // ลิมิตป้องกันการ Error (เผื่อผู้ใช้ใส่ค่าแปลกๆ)
+          if(step >= 50) break; 
       }
 
       let maxSteps = step;
 
-      // 6. แสดงผลลัพธ์ลงบนหน้าจอ
       document.getElementById('out-risk').innerText = "-$" + totalLoss.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       document.getElementById('target-risk').innerText = "-$" + targetRiskUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
       
       document.getElementById('out-lot').innerText = startLot.toFixed(2);
-      document.getElementById('out-steps').innerText = maxSteps + " ไม้";
+      document.getElementById('out-steps').innerText = maxSteps + " ครั้ง";
       document.getElementById('out-multi').innerText = multiplier.toFixed(2);
       document.getElementById('out-sl').innerText = slPoints;
       document.getElementById('out-tp').innerText = tpPoints;
       document.getElementById('out-trail').innerText = trailStart;
 
-      // 7. วาดตาราง Simulation ตามจำนวนไม้ (Max Steps) ที่คำนวณได้
       let tbody = document.getElementById('sim-table');
       let tfoot = document.getElementById('sim-table-foot');
       tbody.innerHTML = '';
@@ -329,7 +326,7 @@
         let profitAtTP = lot * tpPoints;
 
         let row = `<tr>
-          <td>ไม้ที่ ${i + 1}</td>
+          <td>ครั้งที่ ${i + 1}</td>
           <td style="color: #fff; font-weight: bold;">${lot.toFixed(2)}</td>
           <td style="color: #f44336;">-$${lossAmount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
           <td class="profit-range">
@@ -353,7 +350,6 @@
       tfoot.innerHTML = footRow;
     }
 
-    // สั่งให้รันคำนวณอัตโนมัติ
     window.onload = generateWprSettings;
   </script>
 
