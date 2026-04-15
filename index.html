@@ -4,142 +4,44 @@
   <base target="_top">
   <meta charset="UTF-8">
   <title>PK | EA - WPR Auto Settings Calculator</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="WPR AutoCalc">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #121212;
-      color: #ffffff;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
     .header { text-align: center; margin-bottom: 20px; width: 100%; max-width: 600px; }
     .brand-logo { max-height: 80px; width: auto; margin-bottom: 10px; }
     .header h1 { color: #ff9800; margin: 0 0 5px 0; font-size: 26px; }
     .header p { margin: 0; color: #aaa; font-size: 14px;}
-    
-    .container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-      width: 100%;
-      max-width: 900px;
-    }
-
-    .input-panel {
-      background-color: #1e1e1e;
-      padding: 25px;
-      border-radius: 12px;
-      border: 1px solid #333;
-      flex: 1;
-      min-width: 300px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-    }
-    .input-panel h3 { color: #ff9800; margin-top: 0; text-align: center; border-bottom: 1px dashed #444; padding-bottom: 10px;}
-    
+    .container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 900px; }
+    .input-panel, .output-panel { background-color: #1e1e1e; padding: 25px; border-radius: 12px; flex: 1; min-width: 300px; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+    .input-panel { border: 1px solid #333; }
+    .output-panel { border: 2px solid #ff9800; }
+    .input-panel h3, .output-panel h3 { margin-top: 0; text-align: center; border-radius: 6px; padding-bottom: 10px;}
+    .input-panel h3 { color: #ff9800; border-bottom: 1px dashed #444; }
+    .output-panel h3 { color: #000; background-color: #ff9800; padding: 10px; }
     .input-group { margin-bottom: 15px; }
     label { display: block; font-size: 14px; color: #ccc; margin-bottom: 5px; font-weight: bold;}
     .label-desc { font-size: 11px; color: #888; display: block; margin-bottom: 5px; }
-    input[type="number"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 12px;
-      font-size: 18px;
-      border: 2px solid #444;
-      border-radius: 6px;
-      background-color: #2a2a2a;
-      color: #fff;
-      text-align: center;
-      transition: 0.3s;
-    }
+    input[type="number"] { width: 100%; box-sizing: border-box; padding: 12px; font-size: 18px; border: 2px solid #444; border-radius: 6px; background-color: #2a2a2a; color: #fff; text-align: center; transition: 0.3s; }
     input[type="number"]:focus { outline: none; border-color: #ff9800; }
-    
     .input-optional { border-color: #ff9800 !important; background-color: #2a2015 !important; }
     .input-optional:focus { border-color: #ffb74d !important; }
-
-    .btn-calc {
-      width: 100%;
-      padding: 15px;
-      font-size: 18px;
-      background-color: #ff9800;
-      color: #000;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: 0.3s;
-      text-transform: uppercase;
-      margin-top: 10px;
-      box-shadow: 0 4px 10px rgba(255, 152, 0, 0.3);
-    }
+    .btn-calc { width: 100%; padding: 15px; font-size: 18px; background-color: #ff9800; color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; text-transform: uppercase; margin-top: 10px; }
     .btn-calc:hover { background-color: #e68a00; transform: translateY(-2px); }
-
-    .output-panel {
-      background-color: #1e1e1e;
-      padding: 25px;
-      border-radius: 12px;
-      border: 2px solid #ff9800;
-      flex: 1;
-      min-width: 300px;
-      box-shadow: 0 8px 16px rgba(255, 152, 0, 0.15);
-      position: relative;
-    }
-    .output-panel h3 { color: #fff; margin-top: 0; text-align: center; background-color: #ff9800; padding: 10px; border-radius: 6px; color: #000;}
-    
-    .setting-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-top: 20px;
-    }
-    .setting-box {
-      background-color: #2a2a2a;
-      padding: 15px;
-      border-radius: 8px;
-      text-align: center;
-      border-left: 4px solid #ff9800;
-    }
-    .setting-box.full { grid-column: span 2; border-left: none; border-top: 4px solid #f44336; }
-    
+    .setting-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+    .setting-box { background-color: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #ff9800; }
     .setting-box h4 { margin: 0 0 5px 0; color: #aaa; font-size: 12px; text-transform: uppercase;}
     .setting-box .val { font-size: 24px; font-weight: bold; color: #fff; }
-    .val-lot { color: #00d2ff !important; }
+    .val-lot, .val-steps { color: #00d2ff !important; }
     .val-tp { color: #4caf50 !important; }
-    .val-sl { color: #f44336 !important; }
-    .val-steps { color: #00d2ff !important; }
-    .val-loss { color: #f44336 !important; }
+    .val-sl, .val-loss { color: #f44336 !important; }
     .target-risk { font-size: 12px; color: #888; margin-top: 5px; }
-
-    /* ตาราง */
-    .table-container {
-      background-color: #1e1e1e;
-      padding: 20px;
-      border-radius: 12px;
-      border: 1px solid #333;
-      width: 100%;
-      max-width: 900px;
-      margin-top: 30px;
-      overflow-x: auto;
-    }
+    .table-container { background-color: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #333; width: 100%; max-width: 900px; margin-top: 30px; overflow-x: auto; }
     .table-container h3 { color: #ff9800; text-align: center; margin-top: 0; }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; text-align: center; font-size: 14px; }
     th, td { padding: 12px 10px; border-bottom: 1px solid #333; }
     th { background-color: #2a2a2a; color: #ff9800; }
     tr:hover { background-color: #252525; }
-    .profit-range { font-weight: bold; }
-    
-    tfoot tr {
-      background-color: #2a2a2a;
-      border-top: 2px solid #ff9800;
-      font-weight: bold;
-    }
+    tfoot tr { background-color: #2a2a2a; border-top: 2px solid #ff9800; font-weight: bold; }
     tfoot td { font-size: 16px; }
   </style>
 </head>
@@ -154,25 +56,194 @@
   <div class="container">
     <div class="input-panel">
       <h3>⚙️ ข้อมูลเงินทุนความเสี่ยง</h3>
-      
       <div class="input-group">
         <label>1. เงินทุนปัจจุบัน (Equity - USD)</label>
         <input type="number" id="equity" value="500">
       </div>
-      
       <div class="input-group">
         <label>2. ยอมรับความเสี่ยงได้กี่เปอร์เซ็นต์ (%)</label>
         <input type="number" id="risk-pct" value="10" step="0.5">
       </div>
-      
       <div class="input-group">
         <label style="color: #ff9800;">3. ตั้งค่าระยะ Stop Loss (ไม่บังคับ)</label>
         <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบหาระยะที่เหมาะสมที่สุดให้</span>
         <input type="number" id="custom-sl" class="input-optional" placeholder="ตัวอย่าง: 600" step="100">
       </div>
-
       <div class="input-group">
         <label style="color: #ff9800;">4. ล็อก Lot ครั้งแรก (ไม่บังคับ)</label>
         <span class="label-desc" style="color: #cc7a00;">ปล่อยว่าง = ให้ระบบคำนวณ Lot ออโต้ที่ปลอดภัยที่สุดให้</span>
         <input type="number" id="custom-lot" class="input-optional" placeholder="ตัวอย่าง: 0.05" step="0.01">
       </div>
+      <button class="btn-calc" onclick="generateWprSettings()">GENERATE SETTINGS 🚀</button>
+    </div>
+
+    <div class="output-panel">
+      <h3>นำค่าเหล่านี้ไปกรอกใน EA ได้เลย</h3>
+      <div class="setting-grid" style="margin-top: 15px;">
+        <div class="setting-box" style="border-left: none; border-top: 4px solid #f44336; padding: 15px 5px;">
+          <h4>ยอดขาดทุนรวม (ACTUAL RISK)</h4>
+          <div class="val val-loss" id="out-risk" style="font-size: 22px;">$0.00</div>
+          <div class="target-risk">งบความเสี่ยง: <span id="target-risk">$0.00</span></div>
+        </div>
+        <div class="setting-box" style="border-left: none; border-top: 4px solid #4caf50; padding: 15px 5px;">
+          <h4>กำไรเป้าหมาย (TOTAL PROFIT)</h4>
+          <div class="val val-tp" id="out-profit" style="font-size: 22px;">+$0.00</div>
+          <div class="target-risk">ขั้นต่ำ (Trail): <span id="out-profit-min" style="color: #00d2ff;">+$0.00</span></div>
+        </div>
+        <div class="setting-box">
+          <h4 id="lot-label-title">LOTS</h4>
+          <div class="val val-lot" id="out-lot">0.00</div>
+        </div>
+        <div class="setting-box" style="border-left: 4px solid #00d2ff;">
+          <h4 style="color: #00d2ff;">MAX STEPS (สู้ได้สูงสุด)</h4>
+          <div class="val val-steps" id="out-steps">0 ครั้ง</div>
+        </div>
+        <div class="setting-box">
+          <h4 id="sl-label-title">STOP LOSS</h4>
+          <div class="val val-sl" id="out-sl">0</div>
+        </div>
+        <div class="setting-box">
+          <h4>TAKE PROFIT</h4>
+          <div class="val val-tp" id="out-tp">0</div>
+        </div>
+        <div class="setting-box" style="border-left: 4px solid #ffeb3b;">
+          <h4 style="color: #ffeb3b;">MULTIPLY (ดีที่สุด)</h4>
+          <div class="val" id="out-multi">1.2</div>
+        </div>
+        <div class="setting-box">
+          <h4>TRAIL START</h4>
+          <div class="val" id="out-trail">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <h3>📊 แผนจำลองการเทรด (Simulation)</h3>
+    <p style="text-align: center; color: #aaa; font-size: 13px; margin-top: -10px; margin-bottom: 15px;">แสดงมูลค่าการขาดทุนและกำไรของแต่ละออเดอร์ (ไม่นำมาหักลบสะสม)</p>
+    <table>
+      <thead>
+        <tr>
+          <th>ออเดอร์ที่</th>
+          <th>ขนาด Lot</th>
+          <th>ถ้าชน Stop Loss (เสีย)</th>
+          <th>ถ้าชนเป้าหมาย (Trail Start ~ Take Profit)</th>
+        </tr>
+      </thead>
+      <tbody id="sim-table"></tbody>
+      <tfoot id="sim-table-foot"></tfoot>
+    </table>
+  </div>
+
+  <script>
+    function generateWprSettings() {
+      try {
+          let equity = parseFloat(document.getElementById('equity').value) || 0;
+          let riskPct = parseFloat(document.getElementById('risk-pct').value) || 0;
+          let customSl = parseInt(document.getElementById('custom-sl').value);
+          let customLot = parseFloat(document.getElementById('custom-lot').value);
+
+          if(equity <= 0 || riskPct <= 0) {
+              alert("กรุณาระบุเงินทุนและความเสี่ยง(%) ให้ถูกต้องครับ");
+              return;
+          }
+
+          let targetRiskUsd = equity * (riskPct / 100);
+          let isManualLot = !isNaN(customLot) && customLot > 0;
+          let isManualSl = !isNaN(customSl) && customSl >= 100;
+
+          let testMultipliers = [1.2, 1.3, 1.4, 1.5];
+          let testSLs = isManualSl ? [customSl] : [500, 600, 700, 800, 1000, 1200, 1500, 2000];
+          let bestConfig = null;
+          let minScore = Infinity; 
+
+          testSLs.forEach(sl => {
+              testMultipliers.forEach(m => {
+                  let startLot;
+                  if (isManualLot) {
+                      startLot = customLot;
+                  } else {
+                      let sumFactors = 0, tempLotFactor = 1.0;
+                      for(let i=0; i<4; i++) {
+                          sumFactors += tempLotFactor;
+                          tempLotFactor = parseFloat((tempLotFactor * m).toFixed(2));
+                      }
+                      startLot = Math.max(0.01, Math.ceil(((targetRiskUsd / sl) / sumFactors) * 100) / 100); 
+                  }
+
+                  let loss = 0, step = 0, currentLot = startLot, arr = [];
+                  while (loss < targetRiskUsd || step === 0) {
+                      arr.push(currentLot);
+                      loss += currentLot * sl;
+                      currentLot = parseFloat((currentLot * m).toFixed(2));
+                      step++;
+                      if(step >= 50) break; 
+                  }
+
+                  let diff = Math.abs(loss - targetRiskUsd);
+                  let stepPenalty = 0;
+                  if(step < 3) stepPenalty = (3 - step) * 20; 
+                  if(step > 6) stepPenalty = (step - 6) * 10; 
+                  
+                  let score = diff + stepPenalty;
+                  if (score < minScore) {
+                      minScore = score;
+                      bestConfig = { multiplier: m, sl: sl, lot: startLot, steps: step, totalLoss: loss, lotArray: arr };
+                  }
+              });
+          });
+
+          if (!bestConfig) bestConfig = { multiplier: 1.2, sl: 600, lot: 0.01, steps: 3, totalLoss: 0, lotArray: [0.01, 0.01, 0.01] };
+
+          document.getElementById('lot-label-title').innerText = isManualLot ? "⭐ LOTS (ฟิกซ์เอง)" : "LOTS (คำนวณออโต้)";
+          document.getElementById('sl-label-title').innerText = isManualSl ? "⭐ STOP LOSS (ฟิกซ์เอง)" : "STOP LOSS (คำนวณออโต้)";
+
+          let tpPoints = bestConfig.sl * 2; 
+          let trailStart = bestConfig.sl;
+
+          let tbody = document.getElementById('sim-table');
+          let tfoot = document.getElementById('sim-table-foot');
+          tbody.innerHTML = '';
+          
+          let totalProfitTrail = 0, totalProfitTP = 0;
+
+          for(let i = 0; i < bestConfig.steps; i++) {
+            let lot = bestConfig.lotArray[i];
+            let lossAmount = lot * bestConfig.sl;
+            let profitAtTrailStart = lot * trailStart;
+            let profitAtTP = lot * tpPoints;
+
+            totalProfitTrail += profitAtTrailStart;
+            totalProfitTP += profitAtTP;
+
+            tbody.innerHTML += `<tr>
+              <td>ครั้งที่ ${i + 1}</td>
+              <td style="color: #fff; font-weight: bold;">${lot.toFixed(2)}</td>
+              <td style="color: #f44336;">-$${lossAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+              <td><span style="color: #00d2ff;">+$${profitAtTrailStart.toLocaleString('en-US', {minimumFractionDigits: 2})}</span> <span style="color: #aaa;">~</span> <span style="color: #4caf50;">+$${profitAtTP.toLocaleString('en-US', {minimumFractionDigits: 2})}</span></td>
+            </tr>`;
+          }
+
+          tfoot.innerHTML = `<tr>
+            <td colspan="2" style="text-align: right; color: #ff9800; padding-right: 20px;">ผลรวมทั้งหมด:</td>
+            <td style="color: #f44336;">-$${bestConfig.totalLoss.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+            <td><span style="color: #00d2ff;">+$${totalProfitTrail.toLocaleString('en-US', {minimumFractionDigits: 2})}</span> <span style="color: #aaa;">~</span> <span style="color: #4caf50;">+$${totalProfitTP.toLocaleString('en-US', {minimumFractionDigits: 2})}</span></td>
+          </tr>`;
+
+          document.getElementById('target-risk').innerText = "-$" + targetRiskUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('out-risk').innerText = "-$" + bestConfig.totalLoss.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('out-profit').innerText = "+$" + totalProfitTP.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('out-profit-min').innerText = "+$" + totalProfitTrail.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          document.getElementById('out-lot').innerText = bestConfig.lot.toFixed(2);
+          document.getElementById('out-steps').innerText = bestConfig.steps + " ครั้ง";
+          document.getElementById('out-multi').innerText = bestConfig.multiplier.toFixed(1);
+          document.getElementById('out-sl').innerText = bestConfig.sl;
+          document.getElementById('out-tp').innerText = tpPoints;
+          document.getElementById('out-trail').innerText = trailStart;
+          
+      } catch (error) { console.error("Error:", error); }
+    }
+    window.onload = generateWprSettings;
+  </script>
+</body>
+</html>
