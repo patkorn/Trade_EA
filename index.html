@@ -263,12 +263,13 @@
           currentLot = parseFloat((currentLot * multiplier).toFixed(2));
       }
 
-      // 7. คำนวณ SL, TP, Trail (จุด)
-      let slPoints = Math.floor(riskUsd / totalActualLots);
+      // 7. คำนวณ SL, TP, Trail (จุด) - ปรับปรุงให้ปัดขึ้นเป็นเลขถ้วน (หลักสิบ)
+      let rawSlPoints = riskUsd / totalActualLots;
+      let slPoints = Math.ceil(rawSlPoints / 10) * 10; // ปัดขึ้นทีละ 10 จุด
       if (slPoints < 200) slPoints = 200; 
       
-      let tpPoints = slPoints * 2; 
-      let trailStart = Math.floor(tpPoints * 0.5); 
+      let tpPoints = slPoints * 2; // ถ้วนแล้วคูณ 2 ก็ได้ค่าถ้วน
+      let trailStart = Math.ceil((tpPoints * 0.5) / 10) * 10; // ปัดขึ้นเผื่อไว้
 
       // 8. แสดงผลบน UI
       document.getElementById('out-lot').innerText = startLot.toFixed(2);
